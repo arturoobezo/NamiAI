@@ -8,7 +8,7 @@ the initial model download. All processing happens on your device — your data
 never leaves your phone.
 
 Built with Google's Gemma 4 and LiteRT-LM for the 
-**Gemma 4 Good Hackathon 2025**.
+**Gemma 4 Good Hackathon 2026**.
 
 ## The Problem We Solve
 
