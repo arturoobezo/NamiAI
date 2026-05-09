@@ -29,6 +29,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
     
     private var preferredVoiceName: String? = null
     private var isRetrying = false
+    private var _isSpeaking = false
 
     init {
         initializeTts(true)
@@ -119,30 +120,48 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
         tts?.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, params, "NamiUtterance")
     }
 
-    fun speakWithLanguage(text: String, languageCode: String) {
-        if (!isTtsReady) return
+    fun speakWithLanguage(text: String, languageCode: String, onLanguageNotAvailable: ((String) -> Unit)? = null) {
         stopListening()
-        
-        val textToSpeak = cleanText(text)
-        if (textToSpeak.isEmpty()) return
-
+        _isSpeaking = true
         _isSpeakingFlow.value = true
 
-        val locale = getLocaleFromCode(languageCode)
-        tts?.setLanguage(locale)
-        
-        // Re-aplicar voz preferida si es del mismo idioma
-        preferredVoiceName?.let { name ->
-            val voice = tts?.voices?.find { it.name == name }
-            if (voice != null && voice.locale.language == locale.language) {
-                tts?.voice = voice
+        if (isTtsReady) {
+            val locale = when (languageCode) {
+                "es" -> Locale("es", "ES")
+                "en" -> Locale("en", "US")
+                "fr" -> Locale("fr", "FR")
+                "de" -> Locale("de", "DE")
+                "it" -> Locale("it", "IT")
+                "pt" -> Locale("pt", "BR")
+                "zh" -> Locale("zh", "CN")
+                "ja" -> Locale("ja", "JP")
+                "ko" -> Locale("ko", "KR")
+                "ar" -> Locale("ar", "SA")
+                "ru" -> Locale("ru", "RU")
+                "hi" -> Locale("hi", "IN")
+                else -> Locale("es", "ES")
+            }
+
+            val result = tts?.setLanguage(locale)
+            
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                // Idioma no disponible — notificar al usuario
+                _isSpeaking = false
+                _isSpeakingFlow.value = false
+                val langName = locale.displayLanguage
+                onLanguageNotAvailable?.invoke(langName)
+                return
+            }
+
+            val textToSpeak = text.replace(Regex("<think>.*?</think>", RegexOption.DOT_MATCHES_ALL), "")
+                .replace("*", "").replace("#", "").trim()
+
+            if (textToSpeak.isNotEmpty()) {
+                val params = Bundle()
+                params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "NamiTTS")
+                tts?.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, params, "NamiTTS")
             }
         }
-
-        val params = Bundle().apply {
-            putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "TranslatorUtterance")
-        }
-        tts?.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, params, "TranslatorUtterance")
     }
 
     private fun cleanText(text: String): String {
