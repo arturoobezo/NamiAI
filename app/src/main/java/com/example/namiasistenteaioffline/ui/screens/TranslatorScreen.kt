@@ -62,6 +62,7 @@ fun TranslatorScreen(
     var photoUri by remember { mutableStateOf<Uri?>(null) }
     val isSpeaking by voiceManager.isSpeakingFlow.collectAsState()
     var isReloadingModel by remember { mutableStateOf(false) }
+    var ttsErrorMessage by remember { mutableStateOf<String?>(null) }
 
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -296,7 +297,13 @@ fun TranslatorScreen(
                                     voiceManager.stopAll()
                                 } else {
                                     if (translatedText.isNotEmpty()) {
-                                        voiceManager.speakWithLanguage(translatedText, targetLang.second)
+                                        voiceManager.speakWithLanguage(
+                                            text = translatedText,
+                                            languageCode = targetLang.second,
+                                            onLanguageNotAvailable = { langName ->
+                                                ttsErrorMessage = langName
+                                            }
+                                        )
                                     }
                                 }
                             }) {
@@ -318,6 +325,32 @@ fun TranslatorScreen(
                         fontSize = 18.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+
+                ttsErrorMessage?.let { langName ->
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.VolumeOff,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "Voz en $langName no disponible. Ve a Configuración de Android → Idioma → Texto a voz para instalarla.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
                 }
             }
         }
